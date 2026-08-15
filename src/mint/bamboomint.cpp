@@ -5,8 +5,8 @@
  *
  */
 
-#include "bamboo.h"
-#include "bambooconfig.h"
+#include "bamboomint.h"
+#include "bamboomintconfig.h"
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
@@ -49,17 +49,17 @@ namespace fcitx {
 namespace {
 
 constexpr std::string_view MacroPrefix = "macro/";
-constexpr std::string_view InputMethodActionPrefix = "bamboo-input-method-";
-constexpr std::string_view CharsetActionPrefix = "bamboo-charset-";
-const std::string CustomKeymapFile = "conf/bamboo-custom-keymap.conf";
+constexpr std::string_view InputMethodActionPrefix = "bamboomint-input-method-";
+constexpr std::string_view CharsetActionPrefix = "bamboomint-charset-";
+const std::string CustomKeymapFile = "conf/bamboomint-custom-keymap.conf";
 
-FCITX_DEFINE_LOG_CATEGORY(bamboo, "bamboo");
+FCITX_DEFINE_LOG_CATEGORY(bamboomint, "bamboomint");
 
-std::string macroFile(std::string_view imName) {
-    return stringutils::concat("conf/bamboo-macro-", imName, ".conf");
+std::string macroFileMint(std::string_view imName) {
+    return stringutils::concat("conf/bamboomint-macro-", imName, ".conf");
 }
 
-uintptr_t newMacroTable(const BambooMacroTable &macroTable) {
+uintptr_t newMacroTable(const BambooMintMacroTable &macroTable) {
     std::vector<char *> charArray;
     RawConfig r;
     macroTable.save(r);
@@ -83,16 +83,16 @@ std::vector<std::string> convertToStringList(char **array) {
 
 } // namespace
 
-#define FCITX_BAMBOO_DEBUG() FCITX_LOGC(bamboo, Debug)
+#define FCITX_BAMBOOMINT_DEBUG() FCITX_LOGC(bamboomint, Debug)
 
-class BambooState final : public InputContextProperty {
+class BambooMintState final : public InputContextProperty {
 public:
-    BambooState(BambooEngine *engine, InputContext *ic)
+    BambooMintState(BambooMintEngine *engine, InputContext *ic)
         : engine_(engine), ic_(ic) {
         setEngine();
     }
 
-    ~BambooState() {}
+    ~BambooMintState() {}
 
     void setEngine() {
         bambooEngine_.reset();
@@ -217,14 +217,14 @@ public:
     }
 
 private:
-    BambooEngine *engine_;
+    BambooMintEngine *engine_;
     InputContext *ic_;
     CGoObject bambooEngine_;
 };
 
-BambooEngine::BambooEngine(Instance *instance)
+BambooMintEngine::BambooMintEngine(Instance *instance)
     : instance_(instance), factory_([this](InputContext &ic) {
-          return new BambooState(this, &ic);
+          return new BambooMintState(this, &ic);
       }) {
     Init();
     {
@@ -236,7 +236,7 @@ BambooEngine::BambooEngine(Instance *instance)
         imNames_.end()) {
         throw std::runtime_error("Failed to find required input method Telex");
     }
-    FCITX_BAMBOO_DEBUG() << "Supported input methods: " << imNames_;
+    FCITX_BAMBOOMINT_DEBUG() << "Supported input methods: " << imNames_;
     config_.inputMethod.annotation().setList(imNames_);
 
     auto fd = StandardPath::global().open(StandardPath::Type::PkgData,
@@ -250,7 +250,7 @@ BambooEngine::BambooEngine(Instance *instance)
     inputMethodAction_ = std::make_unique<SimpleAction>();
     inputMethodAction_->setIcon("document-edit");
     inputMethodAction_->setShortText(_("Input Method"));
-    uiManager.registerAction("bamboo-input-method", inputMethodAction_.get());
+    uiManager.registerAction("bamboomint-input-method", inputMethodAction_.get());
 
     inputMethodMenu_ = std::make_unique<Menu>();
     inputMethodAction_->setMenu(inputMethodMenu_.get());
@@ -278,7 +278,7 @@ BambooEngine::BambooEngine(Instance *instance)
     charsetAction_ = std::make_unique<SimpleAction>();
     charsetAction_->setShortText(_("Output charset"));
     charsetAction_->setIcon("character-set");
-    uiManager.registerAction("bamboo-charset", charsetAction_.get());
+    uiManager.registerAction("bamboomint-charset", charsetAction_.get());
     charsetMenu_ = std::make_unique<Menu>();
     charsetAction_->setMenu(charsetMenu_.get());
 
@@ -315,7 +315,7 @@ BambooEngine::BambooEngine(Instance *instance)
                 refreshOption();
                 updateSpellAction(ic);
             }));
-    uiManager.registerAction("bamboo-spell-check", spellCheckAction_.get());
+    uiManager.registerAction("bamboomint-spell-check", spellCheckAction_.get());
     macroAction_ = std::make_unique<SimpleAction>();
     macroAction_->setLongText(_("Macro"));
     macroAction_->setIcon("edit-find");
@@ -326,25 +326,25 @@ BambooEngine::BambooEngine(Instance *instance)
             refreshOption();
             updateMacroAction(ic);
         }));
-    uiManager.registerAction("bamboo-macro", macroAction_.get());
+    uiManager.registerAction("bamboomint-macro", macroAction_.get());
 
     reloadConfig();
-    instance_->inputContextManager().registerProperty("bambooState", &factory_);
+    instance_->inputContextManager().registerProperty("bamboomintState", &factory_);
 }
 
-void BambooEngine::reloadConfig() {
-    readAsIni(config_, "conf/bamboo.conf");
+void BambooMintEngine::reloadConfig() {
+    readAsIni(config_, "conf/bamboomint.conf");
     readAsIni(customKeymap_, CustomKeymapFile);
     for (const auto &imName : imNames_) {
         auto &table = macroTables_[imName];
-        readAsIni(table, macroFile(imName));
+        readAsIni(table, macroFileMint(imName));
         macroTableObject_[imName].reset(newMacroTable(table));
     }
 
     populateConfig();
 }
 
-const Configuration *BambooEngine::getSubConfig(const std::string &path) const {
+const Configuration *BambooMintEngine::getSubConfig(const std::string &path) const {
     if (path == "custom_keymap") {
         return &customKeymap_;
     }
@@ -358,13 +358,13 @@ const Configuration *BambooEngine::getSubConfig(const std::string &path) const {
     return nullptr;
 }
 
-void BambooEngine::setConfig(const RawConfig &config) {
+void BambooMintEngine::setConfig(const RawConfig &config) {
     config_.load(config, true);
     saveConfig();
     populateConfig();
 }
 
-void BambooEngine::populateConfig() {
+void BambooMintEngine::populateConfig() {
     refreshEngine();
     refreshOption();
     updateMacroAction(nullptr);
@@ -373,7 +373,7 @@ void BambooEngine::populateConfig() {
     updateCharsetAction(nullptr);
 }
 
-void BambooEngine::setSubConfig(const std::string &path,
+void BambooMintEngine::setSubConfig(const std::string &path,
                                 const RawConfig &config) {
     if (path == "custom_keymap") {
         customKeymap_.load(config, true);
@@ -383,19 +383,19 @@ void BambooEngine::setSubConfig(const std::string &path,
         const auto imName = path.substr(MacroPrefix.size());
         if (auto iter = macroTables_.find(imName); iter != macroTables_.end()) {
             iter->second.load(config, true);
-            safeSaveAsIni(iter->second, macroFile(imName));
+            safeSaveAsIni(iter->second, macroFileMint(imName));
             macroTableObject_[imName].reset(newMacroTable(iter->second));
             refreshEngine();
         }
     }
 }
 
-std::string BambooEngine::subMode(const fcitx::InputMethodEntry & /*entry*/,
+std::string BambooMintEngine::subMode(const fcitx::InputMethodEntry & /*entry*/,
                                   fcitx::InputContext & /*inputContext*/) {
     return *config_.inputMethod;
 }
 
-void BambooEngine::activate(const InputMethodEntry &entry,
+void BambooMintEngine::activate(const InputMethodEntry &entry,
                             InputContextEvent &event) {
     FCITX_UNUSED(entry);
     FCITX_UNUSED(event);
@@ -412,7 +412,7 @@ void BambooEngine::activate(const InputMethodEntry &entry,
     statusArea.addAction(StatusGroup::InputMethod, macroAction_.get());
 }
 
-void BambooEngine::deactivate(const InputMethodEntry &entry,
+void BambooMintEngine::deactivate(const InputMethodEntry &entry,
                               InputContextEvent &event) {
     FCITX_UNUSED(entry);
     auto *state = event.inputContext()->propertyFor(&factory_);
@@ -423,22 +423,22 @@ void BambooEngine::deactivate(const InputMethodEntry &entry,
     }
 }
 
-void BambooEngine::keyEvent(const InputMethodEntry &entry, KeyEvent &keyEvent) {
+void BambooMintEngine::keyEvent(const InputMethodEntry &entry, KeyEvent &keyEvent) {
     FCITX_UNUSED(entry);
     auto *state = keyEvent.inputContext()->propertyFor(&factory_);
 
     state->keyEvent(keyEvent);
 }
 
-void BambooEngine::reset(const InputMethodEntry &entry,
+void BambooMintEngine::reset(const InputMethodEntry &entry,
                          InputContextEvent &event) {
     FCITX_UNUSED(entry);
     auto *state = event.inputContext()->propertyFor(&factory_);
     state->reset();
 }
 
-void BambooEngine::refreshEngine() {
-    FCITX_BAMBOO_DEBUG() << "Refresh engine";
+void BambooMintEngine::refreshEngine() {
+    FCITX_BAMBOOMINT_DEBUG() << "Refresh engine";
     if (!factory_.registered()) {
         return;
     }
@@ -453,7 +453,7 @@ void BambooEngine::refreshEngine() {
     });
 }
 
-void BambooEngine::refreshOption() {
+void BambooMintEngine::refreshOption() {
     if (!factory_.registered()) {
         return;
     }
@@ -467,7 +467,7 @@ void BambooEngine::refreshOption() {
     });
 }
 
-void BambooEngine::updateSpellAction(InputContext *ic) {
+void BambooMintEngine::updateSpellAction(InputContext *ic) {
     spellCheckAction_->setChecked(*config_.spellCheck);
     spellCheckAction_->setShortText(*config_.spellCheck
                                         ? _("Spell Check Enabled")
@@ -477,7 +477,7 @@ void BambooEngine::updateSpellAction(InputContext *ic) {
     }
 }
 
-void BambooEngine::updateMacroAction(InputContext *ic) {
+void BambooMintEngine::updateMacroAction(InputContext *ic) {
     macroAction_->setChecked(*config_.macro);
     macroAction_->setShortText(*config_.macro ? _("Macro Enabled")
                                               : _("Macro Disabled"));
@@ -486,7 +486,7 @@ void BambooEngine::updateMacroAction(InputContext *ic) {
     }
 }
 
-void BambooEngine::updateInputMethodAction(InputContext *ic) {
+void BambooMintEngine::updateInputMethodAction(InputContext *ic) {
     auto name =
         stringutils::concat(InputMethodActionPrefix, *config_.inputMethod);
     for (const auto &action : inputMethodSubAction_) {
@@ -497,7 +497,7 @@ void BambooEngine::updateInputMethodAction(InputContext *ic) {
     }
 }
 
-void BambooEngine::updateCharsetAction(InputContext *ic) {
+void BambooMintEngine::updateCharsetAction(InputContext *ic) {
     auto name =
         stringutils::concat(CharsetActionPrefix, *config_.outputCharset);
     for (const auto &action : charsetSubAction_) {
@@ -510,4 +510,4 @@ void BambooEngine::updateCharsetAction(InputContext *ic) {
 
 } // namespace fcitx
 
-FCITX_ADDON_FACTORY(fcitx::BambooFactory)
+FCITX_ADDON_FACTORY(fcitx::BambooMintFactory)

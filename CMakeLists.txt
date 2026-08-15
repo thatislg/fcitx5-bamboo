@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.6)
 
 project(fcitx5-bamboo VERSION 1.0.10)
 
-set(REQUIRED_FCITX_VERSION 5.1.13)
+set(REQUIRED_FCITX_VERSION 5.1.7)
 find_package(ECM 1.0.0 REQUIRED)
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 include(FeatureSummary)
@@ -15,6 +15,17 @@ find_package(Gettext REQUIRED)
 find_package(Pthread REQUIRED)
 
 include("${FCITX_INSTALL_CMAKECONFIG_DIR}/Fcitx5Utils/Fcitx5CompilerSettings.cmake")
+
+if (NOT COMMAND add_fcitx5_addon)
+  set(FCITX_ADDON_CMAKE_LIBRARY_TYPE MODULE)
+  function(add_fcitx5_addon target_name)
+    cmake_parse_arguments(ARG "" "" "" ${ARGN})
+    set(srcs ${ARG_UNPARSED_ARGUMENTS})
+    add_library(${target_name} ${FCITX_ADDON_CMAKE_LIBRARY_TYPE} ${srcs})
+    set_target_properties(${target_name} PROPERTIES FCITX_ADDON TRUE)
+  endfunction()
+endif()
+
 add_definitions(-DFCITX_GETTEXT_DOMAIN=\"fcitx5-bamboo\")
 fcitx5_add_i18n_definition()
 

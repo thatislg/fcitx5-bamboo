@@ -1,4 +1,6 @@
 
+add_subdirectory(mint)
+
 set( fcitx_bamboo_sources
     bamboo.cpp
 )

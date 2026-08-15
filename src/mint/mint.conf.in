@@ -1,0 +1,6 @@
+[InputMethod]
+Name=Bamboo Mint
+Icon=fcitx_bamboo_mint
+LangCode=vi
+Addon=bamboomint
+Configurable=True
