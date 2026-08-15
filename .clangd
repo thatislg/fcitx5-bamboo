@@ -1,0 +1,10 @@
+CompileFlags:
+  Add:
+    - -std=c++17
+    - -I/home/lmo1720/Fcitx-Bamboo-Mint/fcitx5-bamboo/build/bamboo
+    - -I/usr/include/Fcitx5/Core
+    - -I/usr/include/Fcitx5/Config
+    - -I/usr/include/Fcitx5/Utils
+    - -DFCITX_GETTEXT_DOMAIN="fcitx5-bamboo"
+    - -DFCITX_INSTALL_LOCALEDIR="/usr/local/share/locale"
+    - -D_GNU_SOURCE
