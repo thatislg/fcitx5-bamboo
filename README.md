@@ -92,7 +92,7 @@ sudo cp data/scalable/apps/fcitx_bamboo_mint.svg \
 fcitx5-remote -r
 ```
 
-> Xem chi tiết đầy đủ trong [`requirement/REQ-002.md`](requirement/REQ-002.md).
+> Xem chi tiết đầy đủ trong [`requirement/phase1/REQ-002.md`](requirement/phase1/REQ-002.md).
 
 ---
 
