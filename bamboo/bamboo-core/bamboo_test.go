@@ -6,17 +6,29 @@
  * see <https://github.com/BambooEngine/bamboo-core/blob/master/LICENSE>.
  */
 
+// =============================================================================
+// CHÚ THÍCH THÊM (Tiếng Việt)
+// =============================================================================
+// File: bamboo_test.go
+// Mục đích: Test suite cho engine chính bamboo.go. Kiểm tra xử lý gõ phím,
+//           xóa ký tự, chuyển đổi English/Vietnamese mode, double typing,
+//           shortcut (uwo+, wow), chữ hoa, chính tả (IsValid), và các edge case.
+// Engine test: Telex 2 với EstdFlags (EfreeToneMarking | EstdToneStyle | EautoCorrectEnabled)
+// =============================================================================
+
 package bamboo
 
 import (
 	"testing"
 )
 
+// newStdEngine tạo engine test chuẩn với kiểu gõ Telex 2.
 func newStdEngine() IEngine {
 	var im = ParseInputMethod(InputMethodDefinitions, "Telex 2")
 	return NewEngine(im, EstdFlags)
 }
 
+// TestProcessString kiểm tra xử lý chuỗi cơ bản: dấu móc, shortcut uwo+, hỏi/nặng, gi.
 func TestProcessString(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("aw", VietnameseMode)
@@ -42,6 +54,7 @@ func TestProcessString(t *testing.T) {
 	}
 }
 
+// TestProcessDDString kiểm tra phím d đôi → đ, và đ + dấu huyền.
 func TestProcessDDString(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("dd", VietnameseMode)
@@ -55,6 +68,7 @@ func TestProcessDDString(t *testing.T) {
 	}
 }
 
+// TestProcessMuoiwqString kiểm tra phím không hợp lệ (ENG mode) và dấu nặng.
 func TestProcessMuoiwqString(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("Muoiwq", VietnameseMode)
@@ -68,6 +82,7 @@ func TestProcessMuoiwqString(t *testing.T) {
 	}
 }
 
+// TestProcessThuowString kiểm tra shortcut uw → ư (chữ hoa) và xóa ký tự.
 func TestProcessThuowString(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("Thuow", VietnameseMode)
@@ -80,6 +95,7 @@ func TestProcessThuowString(t *testing.T) {
 	}
 }
 
+// TestBambooEngine_RemoveLastChar kiểm tra xóa ký tự, xóa sau space và dấu hai chấm.
 func TestBambooEngine_RemoveLastChar(t *testing.T) {
 	ng := newStdEngine()
 	ng.RemoveLastChar(true)
@@ -100,6 +116,7 @@ func TestBambooEngine_RemoveLastChar(t *testing.T) {
 	}
 }
 
+// TestProcessUpperString kiểm tra chữ hoa toàn bộ và xử lý phím Q.
 func TestProcessUpperString(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("VIEETJ", VietnameseMode)
@@ -121,6 +138,7 @@ func TestProcessUpperString(t *testing.T) {
 	}
 }
 
+// TestSpellingCheck kiểm tra chính tả: invalid word giữ nguyên ENG, valid word chuyển VIE.
 func TestSpellingCheck(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("noww", VietnameseMode)
@@ -142,6 +160,7 @@ func TestSpellingCheck(t *testing.T) {
 	}
 }
 
+// TestProcessDD kiểm tra dd → đ và SDD → SĐ (chữ hoa).
 func TestProcessDD(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("dd", VietnameseMode)
@@ -159,6 +178,7 @@ func TestProcessDD(t *testing.T) {
 	}
 }
 
+// TestTelex23 kiểm tra Telex 2: [ → ơ, { → Ơ, ] → undo, ]]a → ]a.
 func TestTelex23(t *testing.T) {
 	ng = newStdEngine()
 	ng.ProcessString("t ]", EnglishMode)
@@ -184,6 +204,7 @@ func TestTelex23(t *testing.T) {
 	}
 }
 
+// TestProcessNguwowfiString kiểm tra shortcut wow → ươ.
 func TestProcessNguwowfiString(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("wowfi", VietnameseMode)
@@ -192,6 +213,7 @@ func TestProcessNguwowfiString(t *testing.T) {
 	}
 }
 
+// TestRemoveLastChar kiểm tra xóa phím j không hợp lệ.
 func TestRemoveLastChar(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("hanhj", VietnameseMode)
@@ -202,6 +224,7 @@ func TestRemoveLastChar(t *testing.T) {
 	ng.Reset()
 }
 
+// TestProcessCatrString kiểm tra khi không có rule nào khớp → giữ nguyên.
 func TestProcessCatrString(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("catr", VietnameseMode)
@@ -210,6 +233,7 @@ func TestProcessCatrString(t *testing.T) {
 	}
 }
 
+// TestProcessToowiString kiểm tra oo → ô, rồi wi → undo + tạo ơ.
 func TestProcessToowiString(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("toowi", VietnameseMode)
@@ -218,6 +242,7 @@ func TestProcessToowiString(t *testing.T) {
 	}
 }
 
+// TestProcessAlooString kiểm tra oo → ô (double o trong âm tiết khác).
 func TestProcessAlooString(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("aloo", VietnameseMode)
@@ -226,6 +251,7 @@ func TestProcessAlooString(t *testing.T) {
 	}
 }
 
+// TestSpellingCheckForGiw kiểm tra giw → giư có hợp lệ không.
 func TestSpellingCheckForGiw(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("giw", VietnameseMode)
@@ -234,6 +260,7 @@ func TestSpellingCheckForGiw(t *testing.T) {
 	}
 }
 
+// TestDoubleBrackets kiểm tra [[ → [ (undo dấu ơ trong Telex 2).
 func TestDoubleBrackets(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("[[", VietnameseMode)
@@ -241,6 +268,8 @@ func TestDoubleBrackets(t *testing.T) {
 		t.Errorf("TestDoubleBrackets, got [%v] expected [%v]", ng.GetProcessedString(EnglishMode), "[")
 	}
 }
+
+// TestDoubleBracketso kiểm tra tooss → tôs và tosos → tôs (undo dấu mũ).
 func TestDoubleBracketso(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("tooss", VietnameseMode)
@@ -254,6 +283,7 @@ func TestDoubleBracketso(t *testing.T) {
 	}
 }
 
+// TestDoubleW kiểm tra ww → w (undo dấu ư).
 func TestDoubleW(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("ww", VietnameseMode)
@@ -265,6 +295,7 @@ func TestDoubleW(t *testing.T) {
 	}
 }
 
+// TestDoubleW2 kiểm tra wiw → uiw (undo w sau khi không tìm thấy target).
 func TestDoubleW2(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("wiw", VietnameseMode)
@@ -276,6 +307,7 @@ func TestDoubleW2(t *testing.T) {
 	}
 }
 
+// TestProcessDuwoi kiểm tra shortcut duwoi → dươi (uw → ư + ow → ơ...).
 func TestProcessDuwoi(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("duwoi", VietnameseMode)
@@ -284,6 +316,7 @@ func TestProcessDuwoi(t *testing.T) {
 	}
 }
 
+// TestProcessRefresh kiểm tra chuyển đổi ENG/VIE: reff + resh → refresh/reffresh.
 func TestProcessRefresh(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("reff", VietnameseMode)
@@ -295,6 +328,8 @@ func TestProcessRefresh(t *testing.T) {
 		t.Errorf("Process-VIE [reff+resh], got [%v] expected [refresh]", ng.GetProcessedString(VietnameseMode))
 	}
 }
+
+// TestProcessRefresh2 kiểm tra reff → xóa f → +f → rè (đặt lại dấu).
 func TestProcessRefresh2(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("reff", VietnameseMode)
@@ -305,6 +340,7 @@ func TestProcessRefresh2(t *testing.T) {
 	}
 }
 
+// TestProcessDDSeq kiểm tra oddp → ođp (đ sau nguyên âm).
 func TestProcessDDSeq(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("oddp", VietnameseMode)
@@ -313,6 +349,7 @@ func TestProcessDDSeq(t *testing.T) {
 	}
 }
 
+// TestProcessGisa kiểm tra gi + a → giá (gi = phụ âm đầu).
 func TestProcessGisa(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("gis", VietnameseMode)
@@ -322,6 +359,7 @@ func TestProcessGisa(t *testing.T) {
 	}
 }
 
+// TestProcessKimso kiểm tra kimso → kímo (so không có dấu vì s là phím tắt).
 func TestProcessKimso(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("kimso", VietnameseMode)
@@ -330,6 +368,7 @@ func TestProcessKimso(t *testing.T) {
 	}
 }
 
+// TestProcessTo kiểm tra "to" là tiếng Việt hợp lệ.
 func TestProcessTo(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("to", VietnameseMode)
@@ -338,6 +377,7 @@ func TestProcessTo(t *testing.T) {
 	}
 }
 
+// TestProcessToorr kiểm tra toorr → tôr (oo → ô, r không tạo dấu).
 func TestProcessToorr(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("toorr", VietnameseMode)
@@ -346,6 +386,7 @@ func TestProcessToorr(t *testing.T) {
 	}
 }
 
+// TestProcessTnoss kiểm tra tnoss → tnos (tnó không hợp lệ → undo).
 // tnó
 func TestProcessTnoss(t *testing.T) {
 	ng := newStdEngine()
@@ -355,6 +396,7 @@ func TestProcessTnoss(t *testing.T) {
 	}
 }
 
+// TestProcessEenghf kiểm tra ddawks → đắk (đ + aw → ă + s → sắc).
 // ềng
 func TestProcessEenghf(t *testing.T) {
 	var im = ParseInputMethod(InputMethodDefinitions, "Telex 2")
@@ -365,6 +407,7 @@ func TestProcessEenghf(t *testing.T) {
 	}
 }
 
+// TestProcessHIEEUR kiểm tra chữ hoa: HIEEUR → HIỂU (ee → ê + R → hỏi).
 // HIEEUR
 func TestProcessHIEEUR(t *testing.T) {
 	ng := newStdEngine()
@@ -374,6 +417,7 @@ func TestProcessHIEEUR(t *testing.T) {
 	}
 }
 
+// TestProcessNGUOIW kiểm tra chữ hoa: NGUOIW → NGƯƠI (OIW → ƠI).
 // NGUOIW
 func TestProcessNGUOIW(t *testing.T) {
 	ng := newStdEngine()
@@ -383,6 +427,7 @@ func TestProcessNGUOIW(t *testing.T) {
 	}
 }
 
+// TestProcessTOs kiểm tra Telex 2: {s → Ớ ({ → Ơ + s → sắc).
 // T{s
 func TestProcessTOs(t *testing.T) {
 	ng := newStdEngine()
@@ -392,6 +437,7 @@ func TestProcessTOs(t *testing.T) {
 	}
 }
 
+// TestProcesshuoswc kiểm tra duwongwj → duongwj (w không hợp lệ sau ng → undo).
 // duwongwj
 func TestProcesshuoswc(t *testing.T) {
 	ng := newStdEngine()
@@ -401,6 +447,7 @@ func TestProcesshuoswc(t *testing.T) {
 	}
 }
 
+// TestProcesschoas kiểm tra không stdStyle: choas → choá, bieecs → biếc, uese → uế.
 // choas, bieecs, uese
 func TestProcesschoas(t *testing.T) {
 	var im = ParseInputMethod(InputMethodDefinitions, "Telex 2")
@@ -421,6 +468,7 @@ func TestProcesschoas(t *testing.T) {
 	}
 }
 
+// TestBambooEngine_RestoreLastWord kiểm tra restore từ cuối về phím gốc.
 func TestBambooEngine_RestoreLastWord(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("duwongj tooi", VietnameseMode)
@@ -430,6 +478,7 @@ func TestBambooEngine_RestoreLastWord(t *testing.T) {
 	}
 }
 
+// TestBambooEngine_Zprocessing kiểm tra z không có target → append, và losz → lo (undo s).
 func TestBambooEngine_Zprocessing(t *testing.T) {
 	ng := newStdEngine()
 	ng.ProcessString("loz", VietnameseMode)
@@ -446,6 +495,7 @@ func TestBambooEngine_Zprocessing(t *testing.T) {
 	}
 }
 
+// TestRestoreLastWord kiểm tra chuỗi thao tác phức tạp: afq → restore → xóa → +f.
 func TestRestoreLastWord(t *testing.T) {
 	ng := newStdEngine()
 	s := "afq"
@@ -456,6 +506,7 @@ func TestRestoreLastWord(t *testing.T) {
 	t.Logf("LOGGING Process [%s] got [%v], en=[%s]", s, ng.GetProcessedString(VietnameseMode), ng.GetProcessedString(EnglishMode))
 }
 
+// TestProcessVNWord kiểm tra chuyển đổi dấu thanh: tôifs → tối, tốif → tồi, tốiz → tôi.
 func TestProcessVNWord(t *testing.T) {
 	var s = "tôifs"
 	ng := newStdEngine()
@@ -483,6 +534,8 @@ func TestProcessVNWord(t *testing.T) {
 	}
 }
 
+// TestDoubleTyping kiểm tra nhiều trường hợp double typing và edge case:
+// linuxx → linux, buwoo → buô, cuoiwo → cuôi, arch → invalid, tooi → tôi...
 func TestDoubleTyping(t *testing.T) {
 	var s = "linux"
 	ng := newStdEngine()
@@ -615,8 +668,10 @@ func TestDoubleTyping(t *testing.T) {
 	ng.Reset()
 }
 
+// ng là engine toàn cục dùng cho benchmark.
 var ng = newStdEngine()
 
+// BenchmarkRemoveLastChar đo hiệu năng thao tác xóa và gõ lại.
 func BenchmarkRemoveLastChar(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()

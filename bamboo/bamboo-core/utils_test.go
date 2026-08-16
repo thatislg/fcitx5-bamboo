@@ -4,6 +4,17 @@ import (
 	"testing"
 )
 
+// =============================================================================
+// CHÚ THÍCH THÊM (Tiếng Việt)
+// =============================================================================
+// File: utils_test.go
+// Mục đích: Test suite cho các hàm tiện ích xử lý ký tự tiếng Việt:
+//           IsVowel, FindToneFromChar, AddToneToChar, AddMarkToChar.
+// =============================================================================
+
+// TestIsVowel kiểm tra hàm IsVowel() nhận diện đúng nguyên âm tiếng Việt.
+//
+// Cases: 'a', 'á' → true; 'b' → false; duyệt 84 nguyên âm có dấu → tất cả true.
 func TestIsVowel(t *testing.T) {
 	if IsVowel('a') == false {
 		t.Errorf("a is a vowel, but result is false")
@@ -22,6 +33,11 @@ func TestIsVowel(t *testing.T) {
 	}
 }
 
+// TestGetToneFromChar kiểm tra hàm FindToneFromChar() trích xuất đúng dấu thanh.
+//
+// Cases: e → ToneNone, è → ToneGrave, é → ToneAcute, ẽ → ToneTilde,
+//
+//	ẻ → ToneHook, ạ → ToneDot.
 func TestGetToneFromChar(t *testing.T) {
 	none := FindToneFromChar('e')
 	if none != ToneNone {
@@ -49,6 +65,11 @@ func TestGetToneFromChar(t *testing.T) {
 	}
 }
 
+// TestAddToneToChar kiểm tra hàm AddToneToChar() thêm dấu thanh đúng.
+//
+// Cases: a + ToneDot → ạ; y + ToneNone → y (không đổi);
+//
+//	y + MarkNone → y (không đổi, test thêm AddMarkToChar).
 func TestAddToneToChar(t *testing.T) {
 	cẠ := AddToneToChar('a', uint8(ToneDot))
 	if cẠ != 'ạ' {
@@ -64,6 +85,9 @@ func TestAddToneToChar(t *testing.T) {
 	}
 }
 
+// TestAddMarkToChar kiểm tra hàm AddMarkToChar() thêm dấu phụ đúng.
+//
+// Case: ạ + MarkBreve → ặ (thêm dấu trăng vào ạ).
 func TestAddMarkToChar(t *testing.T) {
 	cẶ := AddMarkToChar('ạ', uint8(MarkBreve))
 	if cẶ != 'ặ' {

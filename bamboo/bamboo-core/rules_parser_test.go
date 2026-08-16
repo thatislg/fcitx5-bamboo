@@ -6,12 +6,24 @@
  * see <https://github.com/BambooEngine/bamboo-core/blob/master/LICENSE>.
  */
 
+// =============================================================================
+// CHÚ THÍCH THÊM (Tiếng Việt)
+// =============================================================================
+// File: rules_parser_test.go
+// Mục đích: Test suite cho parser rule — kiểm tra việc parse rule từ chuỗi
+//           macro định nghĩa kiểu gõ (Telex). Bao gồm parse dấu thanh, dấu phụ,
+//           appending rule, và appended rules (macro đi kèm như "__ươ").
+// =============================================================================
+
 package bamboo
 
 import (
 	"testing"
 )
 
+// TestParseToneRules kiểm tra parse rule dấu thanh từ macro.
+//
+// Cases: z + "XoaDauThanh" → ToneNone; x + "DauNga" → ToneTilde.
 func TestParseToneRules(t *testing.T) {
 	rules := ParseRules('z', "XoaDauThanh")
 	if len(rules) != 1 || rules[0].EffectType != ToneTransformation || Tone(rules[0].Effect) != ToneNone {
@@ -31,6 +43,11 @@ func TestParseToneRules(t *testing.T) {
 	}
 }
 
+// TestParseTonelessRules kiểm tra parse rule dấu phụ (mark) và appending từ macro.
+//
+// Cases: d + "D_Đ" → MarkDash + Appending Đ; { + "_Ư" → Appending Ư;
+//
+//	w + "UOA_ƯƠĂ" → 33 mark rules; w + "UOA_ƯƠĂ__Ư" → 34 rules (thêm appending ư).
 func TestParseTonelessRules(t *testing.T) {
 	rules := ParseTonelessRules('d', "D_Đ")
 	idx := 0
@@ -107,6 +124,11 @@ func TestParseTonelessRules(t *testing.T) {
 
 }
 
+// TestAppendRule kiểm tra parse rule có AppendedRules (macro đi kèm như __ươ → append ơ).
+//
+// Cases: [ + "__ươ" → 1 rule với appended rule Appending ơ;
+//
+//	{ + "__ƯƠ" → 1 rule với appended rule Appending Ơ.
 func TestAppendRule(t *testing.T) {
 	rules := ParseTonelessRules('[', "__ươ")
 	if len(rules) != 1 {
@@ -137,5 +159,6 @@ func TestAppendRule(t *testing.T) {
 	}
 }
 
+// TestParseRulesWithIm (chưa implement).
 func TestParseRulesWithIm(t *testing.T) {
 }
