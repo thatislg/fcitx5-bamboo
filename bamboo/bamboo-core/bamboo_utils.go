@@ -6,6 +6,17 @@
  * see <https://github.com/BambooEngine/bamboo-core/blob/master/LICENSE>.
  */
 
+// =============================================================================
+// CHÚ THÍCH THÊM (Tiếng Việt)
+// =============================================================================
+// File: bamboo_utils.go
+// Mục đích: Chứa toàn bộ logic nền tảng của engine xử lý tiếng Việt. Các hàm
+//           trong file này được bamboo.go gọi để tìm kiếm transformation đích,
+//           tách từ/âm tiết theo cấu trúc CVC, kiểm tra tính hợp lệ, sinh
+//           transformation (undo/fallback/shortcut) và xử lý các trường hợp đặc biệt.
+//           Đây là file quan trọng nhất về mặt thuật toán trong bamboo-core.
+// =============================================================================
+
 package bamboo
 
 import (
@@ -13,6 +24,12 @@ import (
 	"unicode"
 )
 
+// findLastAppendingTrans tìm transformation APPENDING cuối cùng trong composition.
+//
+// Input: Danh sách transformations.
+// Output: Transformation APPENDING cuối cùng; nil nếu không có.
+// Logic: Duyệt ngược từ cuối composition, tìm transformation có EffectType == Appending.
+// Ví dụ: Trong a-as (a + sắc), tìm thấy transformation của 'a'.
 func findLastAppendingTrans(composition []*Transformation) *Transformation {
 	for i := len(composition) - 1; i >= 0; i-- {
 		var trans = composition[i]
@@ -23,6 +40,11 @@ func findLastAppendingTrans(composition []*Transformation) *Transformation {
 	return nil
 }
 
+// newAppendingTrans tạo một transformation APPENDING mới.
+//
+// Input: key — phím gốc; isUpperCase — có phải chữ hoa không.
+// Output: Transformation APPENDING với Rule.Key = Rule.EffectOn = Rule.Result = key.
+// Logic: Mỗi phím chữ cái thường tạo ra APPENDING transformation, giữ nguyên phím.
 func newAppendingTrans(key rune, isUpperCase bool) *Transformation {
 	return &Transformation{
 		IsUpperCase: isUpperCase,
@@ -35,6 +57,13 @@ func newAppendingTrans(key rune, isUpperCase bool) *Transformation {
 	}
 }
 
+// generateAppendingTrans tìm rule APPENDING khớp với phím, hoặc tạo mới.
+//
+// Input: rules — danh sách rule khả dụng; lowerKey — phím thường hóa; isUpperCase.
+// Output: Transformation APPENDING.
+// Logic:
+//   - Duyệt rules, nếu có rule APPENDING khớp key → trả về rule đó.
+//   - Nếu không có → gọi newAppendingTrans tạo mới.
 func generateAppendingTrans(rules []Rule, lowerKey rune, isUpperCase bool) *Transformation {
 	for _, rule := range rules {
 		if rule.Key == lowerKey && rule.EffectType == Appending {
@@ -50,6 +79,11 @@ func generateAppendingTrans(rules []Rule, lowerKey rune, isUpperCase bool) *Tran
 	return newAppendingTrans(lowerKey, isUpperCase)
 }
 
+// filterAppendingComposition lọc chỉ lấy các transformation APPENDING.
+//
+// Input: composition đầy đủ.
+// Output: Slice chỉ chứa các transformation có EffectType == Appending.
+// Logic: Duyệt composition, chọn các transformation gốc (không phải tone/mark).
 func filterAppendingComposition(composition []*Transformation) []*Transformation {
 	var appendingTransformations []*Transformation
 	for _, trans := range composition {
@@ -60,6 +94,12 @@ func filterAppendingComposition(composition []*Transformation) []*Transformation
 	return appendingTransformations
 }
 
+// findRootTarget tìm transformation gốc nhất trong chuỗi Target.
+//
+// Input: Một transformation.
+// Output: Transformation gốc nhất (không còn Target trỏ tới transformation khác).
+// Logic: Đệ quy theo chuỗi Target cho đến khi Target == nil.
+// Ý nghĩa: Khi áp dụng nhiều dấu lên cùng một chữ, cần tìm đến gốc để áp dụng rule mới.
 func findRootTarget(target *Transformation) *Transformation {
 	if target.Target == nil {
 		return target
@@ -68,6 +108,16 @@ func findRootTarget(target *Transformation) *Transformation {
 	}
 }
 
+// isValid kiểm tra xem một âm tiết có phải tiếng Việt hợp lệ không.
+//
+// Input: composition (thường là một âm tiết); inputIsFullComplete — kiểm tra hoàn chỉnh.
+// Output: true nếu âm tiết hợp lệ.
+// Logic:
+//   - Nếu <= 1 transformation → luôn hợp lệ.
+//   - Kiểm tra dấu thanh cuối có hợp lệ với phụ âm cuối không (hasValidTone).
+//   - Tách CVC, Flatten từng phần, gọi isValidCVC kiểm tra chính tả.
+//
+// Ví dụ: "nguyeenx" → false; "nguyen" → true.
 func isValid(composition []*Transformation, inputIsFullComplete bool) bool {
 	if len(composition) <= 1 {
 		return true
@@ -88,11 +138,30 @@ func isValid(composition []*Transformation, inputIsFullComplete bool) bool {
 	return isValidCVC(Flatten(fc, flattenMode), Flatten(vo, flattenMode), Flatten(lc, flattenMode), inputIsFullComplete)
 }
 
+// getRightMostVowels lấy nhóm nguyên âm bên phải nhất trong âm tiết.
+//
+// Input: composition (thường là một âm tiết).
+// Output: Slice các transformation nguyên âm bên phải nhất.
+// Logic: Gọi extractCvcTrans để tách C-V-C, trả về phần vowel.
 func getRightMostVowels(composition []*Transformation) []*Transformation {
 	var _, vo, _ = extractCvcTrans(composition)
 	return vo
 }
 
+// findToneTarget xác định nguyên âm nào sẽ được đặt dấu thanh.
+//
+// Input: Một âm tiết (composition); stdStyle — có dùng kiểu chuẩn không.
+// Output: Transformation nguyên âm đích.
+// Logic phức tạp:
+//   - 1 nguyên âm → target là nguyên âm đó.
+//   - 2 nguyên âm + stdStyle: ưu tiên ơ/ê; nếu không có, có phụ âm cuối → thứ 2, không → thứ 1.
+//   - 2 nguyên âm + không stdStyle: có phụ âm cuối → thứ 2; kiểm tra oa/oe/uy/ue/uo → thứ 2; ngược lại → thứ 1.
+//   - 3 nguyên âm (uye...) → target thứ 3 nếu là "uye", ngược lại thứ 2.
+//
+// Ví dụ:
+//   - "hoa" (oa, không phụ âm cuối) → target thứ 2 (a)
+//   - "hiệu" (có ê, stdStyle) → target ê
+//   - "huyền" (3 nguyên âm, uye) → target e (thứ 3)
 func findToneTarget(composition []*Transformation, stdStyle bool) *Transformation {
 	if len(composition) == 0 {
 		return nil
@@ -140,6 +209,15 @@ func findToneTarget(composition []*Transformation, stdStyle bool) *Transformatio
 	return target
 }
 
+// hasValidTone kiểm tra dấu thanh có hợp lệ với phụ âm cuối không.
+//
+// Input: composition (một âm tiết); tone — dấu thanh cần kiểm tra.
+// Output: true nếu dấu thanh hợp lệ.
+// Logic:
+//   - Sắc (Acute) và nặng (Dot) luôn hợp lệ.
+//   - Các phụ âm cuối c, k, p, t, ch không thể đi với huyền/hỏi/ngã.
+//
+// Ý nghĩa: Đảm bảo không tạo ra âm tiết vô nghĩa như "màc", "tỏp".
 func hasValidTone(composition []*Transformation, tone Tone) bool {
 	if tone == ToneNone || tone == ToneAcute || tone == ToneDot {
 		return true
@@ -160,6 +238,11 @@ func hasValidTone(composition []*Transformation, tone Tone) bool {
 	return true
 }
 
+// getLastToneTransformation lấy transformation dấu thanh cuối cùng trong âm tiết.
+//
+// Input: composition.
+// Output: Transformation TONE cuối có Target != nil; nil nếu không có.
+// Logic: Duyệt ngược composition, tìm transformation có EffectType == ToneTransformation và Target != nil.
 func getLastToneTransformation(composition []*Transformation) *Transformation {
 	for i := len(composition) - 1; i >= 0; i-- {
 		var t = composition[i]
@@ -170,6 +253,12 @@ func getLastToneTransformation(composition []*Transformation) *Transformation {
 	return nil
 }
 
+// isFree kiểm tra xem một transformation đã bị gắn transformation cùng loại chưa.
+//
+// Input: composition; trans — transformation cần kiểm tra; effectType — loại effect.
+// Output: true nếu target chưa bị gắn transformation cùng loại.
+// Logic: Duyệt composition, nếu có transformation nào có Target == trans và EffectType == effectType → false.
+// Ý nghĩa: Một nguyên âm chỉ có thể có 1 dấu thanh và 1 dấu phụ.
 func isFree(composition []*Transformation, trans *Transformation, effectType EffectType) bool {
 	for _, t := range composition {
 		if t.Target == trans && t.Rule.EffectType == effectType {
@@ -179,6 +268,12 @@ func isFree(composition []*Transformation, trans *Transformation, effectType Eff
 	return true
 }
 
+// extractAtomicTrans tách composition theo loại ký tự (nguyên âm/phụ âm) đệ quy.
+//
+// Input: composition; last — tích lũy; lastIsVowel — loại ký tự đang tách.
+// Output: (phần còn lại, phần đã tách).
+// Logic: Duyệt ngược composition, tách cho đến khi gặp ký tự khác loại (nguyên âm vs phụ âm).
+// Ý nghĩa: Là bước cơ bản để tách CVC.
 func extractAtomicTrans(composition, last []*Transformation, lastIsVowel bool) ([]*Transformation, []*Transformation) {
 	if len(composition) == 0 {
 		return composition, last
@@ -194,6 +289,19 @@ func extractAtomicTrans(composition, last []*Transformation, lastIsVowel bool) (
    Separate a string into smaller parts: first consonant (or head), vowel,
    last consonant (if any).
 */
+// extractCvcAppendingTrans tách appending list thành cấu trúc CVC.
+//
+// Input: composition chỉ gồm các transformation APPENDING.
+// Output: (firstConsonant, vowel, lastConsonant).
+// Logic:
+//   1. Gọi extractAtomicTrans tách phụ âm cuối và phần còn lại.
+//   2. Gọi tiếp extractAtomicTrans trên phần còn lại để tách first consonant và vowel.
+//   3. Xử lý đặc biệt gi và qu: Nếu g+i hoặc q+u (không phải gie+phụ âm),
+//      chuyển i/u sang first consonant (gi và qu là phụ âm đầu).
+// Ví dụ:
+//   - ['g', 'i', 'a'] → ['g', 'i'], ['a'], [] (gi = phụ âm đầu)
+//   - ['q', 'u', 'a'] → ['q', 'u'], ['a'], [] (qu = phụ âm đầu)
+//   - ['g', 'i', 'e', 'n', 'g'] → ['g'], ['i', 'e'], ['n', 'g'] (gie+phụ âm = giữ nguyên)
 func extractCvcAppendingTrans(composition []*Transformation) ([]*Transformation, []*Transformation, []*Transformation) {
 	head, lastConsonant := extractAtomicTrans(composition, nil, false)
 	firstConsonant, vowel := extractAtomicTrans(head, nil, true)
@@ -218,6 +326,16 @@ func extractCvcAppendingTrans(composition []*Transformation) ([]*Transformation,
 	return firstConsonant, vowel, lastConsonant
 }
 
+// extractCvcTrans tách toàn bộ composition thành cấu trúc CVC (bao gồm cả tone/mark).
+//
+// Input: Toàn bộ composition.
+// Output: (firstConsonant, vowel, lastConsonant) bao gồm cả transformation tác động.
+// Logic:
+//  1. Tách composition thành appendingList (các APPENDING) và transMap (map target→transformations).
+//  2. Gọi extractCvcAppendingTrans trên appendingList.
+//  3. Nối các transformation tác động (tone/mark) vào đúng nhóm C/V/L.
+//
+// Ý nghĩa: Để kiểm tra chính tả, cần biết dấu thanh/mark nằm trong nhóm nào.
 func extractCvcTrans(composition []*Transformation) ([]*Transformation, []*Transformation, []*Transformation) {
 	var transMap = map[*Transformation][]*Transformation{}
 	var appendingList []*Transformation
@@ -241,6 +359,13 @@ func extractCvcTrans(composition []*Transformation) ([]*Transformation, []*Trans
 	return fc, vo, lc
 }
 
+// extractLastWordWithPunctuationMarks tách từ cuối cùng trong composition kèm dấu câu.
+//
+// Input: composition; effectKeys — danh sách phím đặc biệt.
+// Output: (previous, last) — phần trước từ cuối và từ cuối.
+// Logic: Duyệt ngược composition, tìm ký tự space. Nếu gặp space ở cuối → trả về toàn bộ và nil.
+//
+//	Nếu gặp space ở giữa → tách tại đó.
 func extractLastWordWithPunctuationMarks(composition []*Transformation, effectKeys []rune) ([]*Transformation, []*Transformation) {
 	for i := len(composition) - 1; i >= 0; i-- {
 		var canvas = getCanvas(composition[i:], EnglishMode)
@@ -258,6 +383,13 @@ func extractLastWordWithPunctuationMarks(composition []*Transformation, effectKe
 	return nil, composition
 }
 
+// extractLastWord tách từ cuối cùng trong composition.
+//
+// Input: composition; effectKeys — danh sách phím đặc biệt.
+// Output: (previous, last) — phần trước từ cuối và từ cuối.
+// Logic: Duyệt ngược composition, tìm ký tự không phải chữ cái và không nằm trong effectKeys
+//
+//	(thường là space hoặc dấu câu). Tách tại đó.
 func extractLastWord(composition []*Transformation, effectKeys []rune) ([]*Transformation, []*Transformation) {
 	for i := len(composition) - 1; i >= 0; i-- {
 		var canvas = getCanvas(composition[i:], VietnameseMode|LowerCase|ToneLess|MarkLess)
@@ -275,6 +407,15 @@ func extractLastWord(composition []*Transformation, effectKeys []rune) ([]*Trans
 	return nil, composition
 }
 
+// extractLastSyllable tách âm tiết cuối trong composition (đảm bảo hợp lệ).
+//
+// Input: composition.
+// Output: (previous, last) — phần trước âm tiết cuối và âm tiết cuối hợp lệ.
+// Logic:
+//  1. Gọi extractLastWord để lấy từ cuối.
+//  2. Trong từ cuối, tìm vị trí chia tách sao cho đoạn cuối là âm tiết hợp lệ.
+//
+// Ý nghĩa: Một từ có thể chứa nhiều âm tiết; hàm này tách để chỉ xử lý âm tiết cuối.
 func extractLastSyllable(composition []*Transformation) ([]*Transformation, []*Transformation) {
 	var previous, last = extractLastWord(composition, nil)
 	var anchor = 0
@@ -289,6 +430,18 @@ func extractLastSyllable(composition []*Transformation) ([]*Transformation, []*T
 	return previous, last[anchor:]
 }
 
+// findMarkTarget tìm transformation đích và rule cho dấu phụ (móc, râu, trăng...).
+//
+// Input: Một âm tiết; rules — danh sách rule khả dụng.
+// Output: (target, rule) — target là transformation bị tác động, rule là rule sẽ áp dụng.
+// Logic:
+//  1. Duyệt ngược composition.
+//  2. Với mỗi transformation, thử áp dụng rule MARK. Kiểm tra:
+//     - Result của transformation khớp EffectOn của rule.
+//     - Effect > 0 (có dấu phụ).
+//     - Áp dụng rule không làm chuỗi giống nhau (tránh lặp).
+//     - isValid sau khi thử áp dụng.
+//  3. Trả về target và rule đầu tiên hợp lệ.
 func findMarkTarget(composition []*Transformation, rules []Rule) (*Transformation, Rule) {
 	var str = Flatten(composition, VietnameseMode)
 	for i := len(composition) - 1; i >= 0; i-- {
@@ -312,6 +465,18 @@ func findMarkTarget(composition []*Transformation, rules []Rule) (*Transformatio
 	return nil, Rule{}
 }
 
+// findTarget tìm transformation đích cho một phím (dấu thanh hoặc dấu phụ).
+//
+// Input: composition; applicableRules — rule khả dụng; flags — cấu hình engine.
+// Output: (target, rule) — target cho dấu thanh hoặc dấu phụ.
+// Logic:
+//  1. Ưu tiên tìm TONE target trước (qua findToneTarget).
+//     - Nếu EfreeToneMarking bật: tìm nguyên âm thích hợp.
+//     - Nếu không: target là nguyên âm APPENDING cuối.
+//  2. Kiểm tra nếu áp dụng rule làm chuỗi không đổi (lặp) → bỏ qua.
+//  3. Nếu rule TONE không khớp → gọi findMarkTarget.
+//
+// Ý nghĩa: Entry point chính để quyết định phím dấu sẽ tác động lên chữ nào.
 func findTarget(composition []*Transformation, applicableRules []Rule, flags uint) (*Transformation, Rule) {
 	var str = Flatten(composition, VietnameseMode)
 	// find tone target
@@ -339,6 +504,15 @@ func findTarget(composition []*Transformation, applicableRules []Rule, flags uin
 	return findMarkTarget(composition, applicableRules)
 }
 
+// generateUndoTransformations sinh các transformation để bỏ dấu/mark khi nhấn lại phím dấu.
+//
+// Input: composition; rules — rule khả dụng; flags — cấu hình engine.
+// Output: Các transformation UNDO để bỏ dấu/mark.
+// Logic:
+//   - Với rule TONE: tìm target, tạo transformation TONE với Effect = 0 (xóa dấu).
+//   - Với rule MARK: tìm target có Result khớp EffectOn, tạo transformation MARK với Effect = 0.
+//
+// Ý nghĩa: Khi nhấn lại phím dấu (ví dụ: aa trong Telex → a thay vì â), engine cần undo dấu trước đó.
 func generateUndoTransformations(composition []*Transformation, rules []Rule, flags uint) []*Transformation {
 	var transformations []*Transformation
 	var str = Flatten(composition, VietnameseMode|ToneLess|LowerCase)
@@ -386,7 +560,12 @@ func generateUndoTransformations(composition []*Transformation, rules []Rule, fl
 	return transformations
 }
 
+// Regex cho shortcut uwo+ — khớp pattern uơ hoặc ưo theo sau bởi ít nhất 1 chữ cái.
+// Dùng trong bamboo.go applyUowShortcut.
 var regUOhTail = regexp.MustCompile(`(uơ|ưo)\p{L}+`)
+
+// Regex cho undo ư → u — khớp ưo hoặc ươ trong âm tiết.
+// Dùng trong generateTransformations để xử lý ươ + o → uô.
 var regUhO = regexp.MustCompile(`(ưo|ươ)`)
 
 /**
@@ -399,6 +578,22 @@ var regUhO = regexp.MustCompile(`(ưo|ươ)`)
 * 7 | (u)wo + w  ->  undo + append       -> uow
 * ...
 **/
+
+// generateTransformations sinh các transformation cho một phím mới — HÀM QUAN TRỌNG NHẤT FILE.
+//
+// Input: composition hiện tại; applicableRules — rule khả dụng; flags; lowerKey; isUpperCase.
+// Output: Danh sách transformation cho phím này (có thể rỗng).
+// Logic:
+//  1. Double typing undo: Nếu nhấn lại phím effect (ví dụ: aw rồi lại w trong Telex 2),
+//     tạo MARK MarkRaw để undo → trả về ngay.
+//  2. Tìm target: Gọi findTarget. Nếu tìm thấy:
+//     - Tạo transformation với rule và target.
+//     - Nếu không phải MARK → trả về ngay.
+//     - Nếu là MARK và hợp lệ → trả về. Nếu không hợp lệ, thử tìm target khác (virtual rule cho uow).
+//  3. Shortcut ươ/ưo: Nếu âm tiết chứa ưo/ươ và nhấn o, undo ư → u rồi áp dụng rule mới.
+//  4. Fallback undo: Nếu không tìm thấy target, thử undo các effect hiện có, sau đó append phím gốc.
+//
+// Các ví dụ trong comment tiếng Anh phía trên.
 func generateTransformations(composition []*Transformation, applicableRules []Rule, flags uint, lowerKey rune, isUpperCase bool) []*Transformation {
 	var transformations []*Transformation
 	// Double typing an effect key undoes it and its effects, e.g. w + w -> w (Telex 2)
@@ -467,6 +662,13 @@ func generateTransformations(composition []*Transformation, applicableRules []Ru
 	return transformations
 }
 
+// generateFallbackTransformations sinh fallback APPENDING khi không có rule nào khớp.
+//
+// Input: composition; applicableRules; lowerKey; isUpperCase.
+// Output: Fallback transformations (ít nhất 1 APPENDING).
+// Logic:
+//  1. Tạo APPENDING transformation cho key (qua generateAppendingTrans).
+//  2. Xử lý các AppendedRules (các rule đi kèm, ví dụ: macro ư có thể append thêm dấu).
 func generateFallbackTransformations(composition []*Transformation, applicableRules []Rule, lowerKey rune, isUpperCase bool) []*Transformation {
 	var transformations []*Transformation
 	var trans = generateAppendingTrans(applicableRules, lowerKey, isUpperCase)
@@ -484,6 +686,12 @@ func generateFallbackTransformations(composition []*Transformation, applicableRu
 	return transformations
 }
 
+// breakComposition phân rã âm tiết tiếng Việt thành các phím gốc.
+//
+// Input: Một âm tiết (composition).
+// Output: Composition mới chỉ gồm các phím gốc (không có dấu thanh/phụ).
+// Logic: Lặp qua composition, bỏ qua các transformation có Key == 0 (virtual), tạo APPENDING mới từ Rule.Key.
+// Ý nghĩa: Chuyển âm tiết tiếng Việt về dạng phím gốc (ví dụ: chuyển → chuyeen).
 func breakComposition(composition []*Transformation) []*Transformation {
 	var result []*Transformation
 	for _, trans := range composition {
@@ -495,6 +703,17 @@ func breakComposition(composition []*Transformation) []*Transformation {
 	return result
 }
 
+// refreshLastToneTarget di chuyển dấu thanh sang nguyên âm đúng khi âm tiết thay đổi.
+//
+// Input: Một âm tiết (composition); stdStyle — có dùng kiểu chuẩn không.
+// Output: Các transformation để di chuyển dấu thanh (có thể rỗng).
+// Logic:
+//  1. Lấy nguyên âm bên phải nhất (getRightMostVowels).
+//  2. Lấy transformation dấu thanh cuối.
+//  3. Tính lại target đúng (findToneTarget).
+//  4. Nếu target thay đổi: tạo transformation xóa dấu cũ + tạo transformation đặt dấu mới.
+//
+// Ví dụ: chuyr → chuỷ (dấu trên y), sau đó chuyrene → chuyển (dấu chuyển sang e).
 func refreshLastToneTarget(composition []*Transformation, stdStyle bool) []*Transformation {
 	var transformations []*Transformation
 	var rightmostVowels = getRightMostVowels(composition)
