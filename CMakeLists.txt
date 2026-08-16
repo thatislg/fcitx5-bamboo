@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.6)
 
-project(fcitx5-bamboo VERSION 1.0.10)
+project(fcitx5-bamboo-mint VERSION 1.0.10)
 
 set(REQUIRED_FCITX_VERSION 5.1.7)
 find_package(ECM 1.0.0 REQUIRED)
@@ -26,18 +26,13 @@ if (NOT COMMAND add_fcitx5_addon)
   endfunction()
 endif()
 
-add_definitions(-DFCITX_GETTEXT_DOMAIN=\"fcitx5-bamboo\")
+add_definitions(-DFCITX_GETTEXT_DOMAIN=\"fcitx5-bamboo-mint\")
 fcitx5_add_i18n_definition()
 
 add_subdirectory(po)
 add_subdirectory(bamboo)
 add_subdirectory(src)
 add_subdirectory(data)
-
-fcitx5_translate_desktop_file(org.fcitx.Fcitx5.Addon.Bamboo.metainfo.xml.in
-    org.fcitx.Fcitx5.Addon.Bamboo.metainfo.xml XML)
-
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/org.fcitx.Fcitx5.Addon.Bamboo.metainfo.xml" DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo)
 
 feature_summary(WHAT ALL FATAL_ON_MISSING_REQUIRED_PACKAGES)
 

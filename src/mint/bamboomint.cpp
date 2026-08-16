@@ -240,7 +240,7 @@ BambooMintEngine::BambooMintEngine(Instance *instance)
     config_.inputMethod.annotation().setList(imNames_);
 
     auto fd = StandardPath::global().open(StandardPath::Type::PkgData,
-                                           "bamboo/vietnamese.cm.dict", O_RDONLY);
+                                           "bamboomint/vietnamese.cm.dict", O_RDONLY);
     if (!fd.isValid()) {
         throw std::runtime_error("Failed to load dictionary");
     }
