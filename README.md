@@ -60,10 +60,7 @@ sudo apt install cmake extra-cmake-modules \
 ## Build
 
 ```bash
-# 1. Lấy submodule (nếu chưa có)
-git submodule update --init --recursive
-
-# 2. Tạo thư mục build
+# 1. Tạo thư mục build
 mkdir -p build && cd build
 cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
 make -j4
