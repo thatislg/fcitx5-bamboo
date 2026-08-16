@@ -4,10 +4,9 @@ Bamboo Mint — Bộ gõ tiếng Việt độc lập cho Fcitx5, dựa trên [fc
 
 ## Mục đích
 
-Dự án này tạo ra một addon độc lập tên **Bamboo Mint** (`bamboomint`), cho phép chạy **song song** với addon `bamboo` gốc trong cùng một phiên fcitx5. Nhờ đó, bạn có thể chuyển đổi qua lại giữa:
+Dự án này tạo ra addon độc lập tên **Bamboo Mint** (`bamboomint`), chạy như một bộ gõ tiếng Việt riêng biệt trong fcitx5. Nhờ đó, bạn có thể chuyển đổi qua lại giữa:
 
 - **Bamboo Mint** (tiếng Việt)
-- **Bamboo** gốc (tiếng Việt)
 - **Mozc** (tiếng Nhật)
 - **Pinyin** / **Cangjie** (tiếng Trung)
 - **keyboard-us** (bàn phím tiếng Anh)
